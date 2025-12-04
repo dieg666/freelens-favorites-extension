@@ -1,7 +1,5 @@
 import { Common } from "@freelensapp/extensions";
 import { makeObservable, observable, action, toJS, computed, configure, runInAction } from "mobx";
-import { promises as fs } from "fs";
-import path from "path";
 
 // Configure MobX to enforce actions
 configure({
@@ -39,7 +37,6 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
   @observable currentClusterId: string = "";
 
   private static instance?: FavoritesStore;
-  private savePath?: string;
 
   constructor() {
     super({
@@ -89,31 +86,7 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
   // Store the save path when store is loaded
   async loadExtension(extension: any) {
     await super.loadExtension(extension);
-    // Calculate the save path
-    const userDataPath = process.env.HOME || process.env.USERPROFILE || "";
-    this.savePath = path.join(
-      userDataPath,
-      "Library/Application Support/Freelens/extension-store/@freelensapp/custom-extension/favorites-store.json"
-    );
-    console.log("[FavoritesStore] Save path:", this.savePath);
     return this;
-  }
-
-  // Manual save to file
-  private async saveToFile() {
-    if (!this.savePath) {
-      console.error("[FavoritesStore] Save path not set");
-      return;
-    }
-
-    try {
-      const data = this.toJSON();
-      const fileContent = JSON.stringify(data, null, 2);
-      await fs.writeFile(this.savePath, fileContent, "utf-8");
-      console.log("[FavoritesStore] Successfully saved to file:", this.savePath);
-    } catch (error) {
-      console.error("[FavoritesStore] Error saving to file:", error);
-    }
   }
 
   @computed get itemsCount(): number {
@@ -172,9 +145,6 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
     // Create new array to trigger observable change detection
     this.items = [...this.items, newItem];
     console.log("[FavoritesStore] Total items after add:", this.items.length, "(current cluster:", this.currentClusterItems.length, ")");
-    
-    // Manually save to file
-    await this.saveToFile();
   }
 
   // Remove a favorite item
@@ -194,9 +164,6 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
     
     console.log("[FavoritesStore] After remove - Total items:", this.items.length, "(removed:", previousLength - this.items.length, ")");
     console.log("[FavoritesStore] Current cluster items:", this.currentClusterItems.length);
-    
-    // Manually save to file
-    await this.saveToFile();
   }
 
   // Check if path is already favorited in current cluster
@@ -238,9 +205,6 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
     console.log("[FavoritesStore] Current cluster items with order:", 
       this.currentClusterItems.map(i => ({ title: i.title, order: i.order }))
     );
-    
-    // Save to file
-    await this.saveToFile();
   }
 
   // Get ungrouped favorites for current cluster
