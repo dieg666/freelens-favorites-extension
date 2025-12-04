@@ -1,5 +1,7 @@
 import { Common } from "@freelensapp/extensions";
 import { makeObservable, observable, action, toJS, computed, configure, runInAction } from "mobx";
+import { promises as fs } from "fs";
+import path from "path";
 
 // Configure MobX to enforce actions
 configure({
@@ -37,6 +39,7 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
   @observable currentClusterId: string = "";
 
   private static instance?: FavoritesStore;
+  private savePath?: string;
 
   constructor() {
     super({
@@ -86,7 +89,45 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
   // Store the save path when store is loaded
   async loadExtension(extension: any) {
     await super.loadExtension(extension);
+    
+    // Build cross-platform save path
+    let appDataPath: string;
+    
+    if (process.platform === 'win32') {
+      // Windows: %APPDATA%\Freelens
+      appDataPath = path.join(process.env.APPDATA || '', 'Freelens');
+    } else if (process.platform === 'darwin') {
+      // macOS: ~/Library/Application Support/Freelens
+      appDataPath = path.join(process.env.HOME || '', 'Library/Application Support/Freelens');
+    } else {
+      // Linux: ~/.config/Freelens
+      appDataPath = path.join(process.env.HOME || '', '.config/Freelens');
+    }
+    
+    this.savePath = path.join(
+      appDataPath,
+      'extension-store',
+      'freelens-favorites-extension',
+      'favorites-store.json'
+    );
+    
     return this;
+  }
+  
+  // Save to file
+  private async saveToFile(): Promise<void> {
+    if (!this.savePath) {
+      return;
+    }
+
+    try {
+      await fs.mkdir(path.dirname(this.savePath), { recursive: true });
+      const data = this.toJSON();
+      const fileContent = JSON.stringify(data, null, 2);
+      await fs.writeFile(this.savePath, fileContent, "utf-8");
+    } catch (error) {
+      console.error("[FavoritesStore] Error saving:", error);
+    }
   }
 
   @computed get itemsCount(): number {
@@ -111,25 +152,18 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
   fromStore(data: FavoritesModel): void {
     this.items = data.items || [];
     this.groups = data.groups || [];
-    console.log("[FavoritesStore] Loaded from disk:", { items: this.items.length, groups: this.groups.length });
-    console.log("[FavoritesStore] Store methods available:", Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
   }
 
   toJSON(): FavoritesModel {
-    // Convert MobX observables to plain JavaScript objects for serialization
-    const data = {
+    return {
       items: toJS(this.items),
       groups: toJS(this.groups),
     };
-    console.log("[FavoritesStore] toJSON called - Serializing:", { items: data.items.length, groups: data.groups.length, itemsData: data.items });
-    return data;
   }
 
-  // Add a favorite navigation item
   @action
   async addFavorite(item: Omit<FavoriteNavItem, "id" | "createdAt" | "clusterId">): Promise<void> {
     if (!this.currentClusterId) {
-      console.error("[FavoritesStore] Cannot add favorite: no cluster ID set");
       return;
     }
 
@@ -140,30 +174,20 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
       clusterId: this.currentClusterId,
       createdAt: new Date().toISOString(),
     };
-    console.log("[FavoritesStore] Adding favorite to cluster", this.currentClusterId, ":", newItem);
     
-    // Create new array to trigger observable change detection
     this.items = [...this.items, newItem];
-    console.log("[FavoritesStore] Total items after add:", this.items.length, "(current cluster:", this.currentClusterItems.length, ")");
+    await this.saveToFile();
   }
 
-  // Remove a favorite item
   @action
   async removeFavorite(itemId: string): Promise<void> {
-    console.log("[FavoritesStore] Removing favorite:", itemId);
-    console.log("[FavoritesStore] Before remove - Total items:", this.items.length, "Current cluster items:", this.currentClusterItems.length);
-    
-    // Filter to create new array and trigger observable change detection
-    const previousLength = this.items.length;
     const newItems = this.items.filter(item => item.id !== itemId);
     
-    // Use runInAction to ensure MobX tracks this properly
     runInAction(() => {
       this.items = newItems;
     });
     
-    console.log("[FavoritesStore] After remove - Total items:", this.items.length, "(removed:", previousLength - this.items.length, ")");
-    console.log("[FavoritesStore] Current cluster items:", this.currentClusterItems.length);
+    await this.saveToFile();
   }
 
   // Check if path is already favorited in current cluster
@@ -172,39 +196,25 @@ export class FavoritesStore extends Common.Store.ExtensionStore<FavoritesModel> 
     return this.items.some(item => item.path === path && item.clusterId === this.currentClusterId);
   }
 
-  // Reorder favorites for the current cluster
   @action
   async reorderFavorites(orderedIds: string[]): Promise<void> {
-    console.log("[FavoritesStore] Reordering favorites:", orderedIds);
-    
-    // Create a map of id -> new order
     const orderMap = new Map<string, number>();
     orderedIds.forEach((id, index) => {
       orderMap.set(id, index);
     });
     
-    // Update the order field for items in current cluster
     const updatedItems = this.items.map(item => {
       if (item.clusterId === this.currentClusterId && orderMap.has(item.id)) {
-        const newOrder = orderMap.get(item.id)!;
-        console.log(`[FavoritesStore] Setting order ${newOrder} for item ${item.title} (${item.id})`);
-        return { ...item, order: newOrder };
+        return { ...item, order: orderMap.get(item.id)! };
       }
       return item;
     });
     
-    // Force array replacement to trigger MobX reactivity using runInAction
     runInAction(() => {
-      this.items = [...updatedItems]; // Create a fresh array copy
+      this.items = [...updatedItems];
     });
     
-    console.log("[FavoritesStore] After reorder - items:", this.items.length);
-    console.log("[FavoritesStore] Items after reorder:", 
-      this.items.map(i => ({ title: i.title, order: i.order, clusterId: i.clusterId }))
-    );
-    console.log("[FavoritesStore] Current cluster items with order:", 
-      this.currentClusterItems.map(i => ({ title: i.title, order: i.order }))
-    );
+    await this.saveToFile();
   }
 
   // Get ungrouped favorites for current cluster
