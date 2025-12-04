@@ -13,6 +13,7 @@ https://github.com/dieg666/freelens-favorites-extension/raw/main/freelens-favori
 **Important**: Clear extension cache before installation:
 - macOS: `~/Library/Application Support/Freelens/`, `~/.freelens/extensions/`
 - Windows: `%APPDATA%\Freelens\`, `%USERPROFILE%\.freelens\extensions\`
+- Linux: `~/.config/Freelens/`, `~/.freelens/extensions/`
 
 ### Requirements
 
@@ -23,6 +24,7 @@ https://github.com/dieg666/freelens-favorites-extension/raw/main/freelens-favori
 
 - macOS (working)
 - Windows 10 (working)
+- Linux (expected to work)
 
 ## Features
 
@@ -36,7 +38,7 @@ https://github.com/dieg666/freelens-favorites-extension/raw/main/freelens-favori
 - Appears first in the cluster sidebar (sticky positioning)
 - Collapsible dropdown showing all favorited items for the current cluster
 - Click any favorite to navigate directly to that resource
-- Frosted glass effect with shadow when scrolling
+- Border and shadow styling when scrolling
 - Collapse state persists across navigation
 
 ### Favorites Dashboard
@@ -49,7 +51,10 @@ https://github.com/dieg666/freelens-favorites-extension/raw/main/freelens-favori
 ### Cluster-Scoped Storage
 - Favorites are stored per-cluster
 - Switching clusters shows different favorites
-- Data persisted to `~/Library/Application Support/Freelens/extension-store/`
+- Data persisted to platform-specific directories:
+  - **macOS**: `~/Library/Application Support/Freelens/extension-store/freelens-favorites-extension/`
+  - **Windows**: `%APPDATA%\Freelens\extension-store\freelens-favorites-extension\`
+  - **Linux**: `~/.config/Freelens/extension-store/freelens-favorites-extension/`
 
 ## Installation
 
@@ -130,7 +135,7 @@ Stars only appear on actual sidebar navigation items using:
 
 #### Sticky Positioning
 Favorites menu stays anchored at top with:
-- Frosted glass background (rgba(54, 57, 62, 0.98))
+- Solid background matching FreeLens theme
 - Border and shadow when stuck
 - Native FreeLens styling
 
@@ -173,4 +178,4 @@ MIT
 
 ## Author
 
-delgadodiaz (delgadodiaz@users.noreply.github.com)
+@dieg666 (ddd.barna@hotmail.com)
