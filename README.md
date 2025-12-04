@@ -1,6 +1,28 @@
 # FreeLens Favorites Extension
 
-A FreeLens extension that adds a favorites/bookmarking system for sidebar navigation items with drag-and-drop reordering and a sticky favorites menu.
+**Status**: Under development
+
+Add favorites/bookmarking to FreeLens sidebar navigation with drag-and-drop reordering.
+
+## Installation
+
+```
+https://github.com/dieg666/freelens-favorites-extension/raw/main/freelens-favorites-extension-1.0.0.tgz
+```
+
+**Important**: Clear extension cache before installation:
+- macOS: `~/Library/Application Support/Freelens/`, `~/.freelens/extensions/`
+- Windows: `%APPDATA%\Freelens\`, `%USERPROFILE%\.freelens\extensions\`
+
+### Requirements
+
+- FreeLens >= 1.6.0
+- Node.js >= 22.16.0
+
+### Tested On
+
+- macOS (working)
+- Windows 10 (working)
 
 ## Features
 
